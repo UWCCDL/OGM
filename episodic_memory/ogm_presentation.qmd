@@ -1,0 +1,277 @@
+---
+title: Overgeneral Autobiographical Memory Model
+jupyter: python3
+format: 
+  revealjs:
+    scrollable: true
+    echo: true
+---
+
+
+
+```{python}
+#| echo: false
+import random
+import rustworkx as rx
+import numpy as np
+import math
+```
+
+# Memory Network and Spreading Activation
+
+## Generating Memory Network
+
+The first step is to create our memories. 
+
+![Autobiographical Memory](ESK.png)
+
+According to Conway and Pearce (2000), autobiographical memory can be divided into three main components: 
+
+- lifetime periods ("When I was younger")
+- general events ("I went on a trip during summer break")
+- event specific knowledge (ESK) ("I smelled the smoke of the wildfire")
+
+For this model, we will be focusing on the lowest layer (ESK), as that is what people with OGM often have trouble remembering. The goal is to create an undirected graph with the following properties:
+
+- Every node is an individual ESK, and is connected to every other node
+- Each node has a base-level activation that decays over time and spikes whenever it is retrieved.
+- The edges contain weights which represent how closely associated two memories are. This is the spreading activation.
+
+## Spreading Activation
+
+In the spreading activation model of memory retrieval, activation of one node causes activation of a connected node which repeats until retrieval is terminated through some process. It makes sense then that nodes which are more closely connected (ESK's of the same general event) would be more likely to activate each other than ESK's that are unrelated.
+
+![Spreading Activation](equation.png)
+
+To calculate the probability of a memory being retrieved, we would first have to consider the total activation of every node, defined as the base-level activation + spreading activation + noise. Then, the model would probabilistically choose a node that is above a pre-defined threshold using the activations as the weights.
+
+## ACT-R Model of Memory Decay
+
+Although the spreading activation is assumed to remain constant in this model, base-level activation does change. This is because memory decays over time to the point at which it is forgotten, while retrieving the memory helps retain it. Every time a memory is recalled, this means that a new "trace" is created.
+
+![](attachment:image-2.png)
+
+The equation above shows how base-level activation is calculated, and it is what my model uses. Each trace is maximally active during creation when $t = 1$, and exponentially decays as $t$ gets larger due to the negative d. Then, all of the traces are summed to give the final base-level activation. 
+
+```{python}
+class Memory:
+    def __init__(self, n, groups, state=None, thres=0, sigma=0.1):
+        group_size = n // groups
+
+        def weight(i, j):
+            return 10 if (i // group_size == j // group_size) else 0
+
+        graph = rx.PyGraph()
+        graph.add_nodes_from([[1]] * n)
+        graph.add_edges_from([
+            (i, j, weight(i, j))
+            for i in range(n)
+            for j in range(i + 1, n)
+        ])
+        self.graph = graph
+        self.state = state
+        self.thres = thres
+        self.current_graph = graph.copy()
+        self.sigma = sigma
+        self.state = state
+
+    def initialize_state(self):
+        self.state = random.choice(range(len(list(self.graph.nodes()))))
+
+    def spreading_activation(self):
+        graph = self.current_graph
+        adj = graph.adj(self.state)
+        neighbors = list(adj.keys())
+        activations = []
+        for j in neighbors:
+            sum_t = sum(trace ** -0.5 for trace in graph[j])
+
+            activation = adj[j] + math.log(sum_t) + random.gauss(0, self.sigma)
+            if activation > self.thres:
+                activations.append(activation)
+            else:
+                activations.append(0)
+        if sum(activations) == 0:
+            return False
+        next_state = random.choices(neighbors, weights=activations, k=1)[0]
+        self.graph[next_state] = self.graph[next_state] + [1]
+        graph.remove_node(self.state)
+        return next_state
+
+    def decay(self, time):
+        for node in self.graph.node_indices():
+            self.graph[node] = [trace + time for trace in self.graph[node]]
+```
+
+# Reinforcement Learning
+
+## Agent
+
+In reinforcement learning, an agent learns to explore its environment in order to maximize rewards. This is what that means in terms of my model:
+
+- Environment: The memory network defined in the previous section.
+- Agent: Decision-making process in the brain that decides whether to continue or terminate retrieval.
+- Reward: How useful (or traumatic) a memory is.
+
+To simplify the model, I will assume that there is one "trauma" memory which has a very negative reward, and all of the other memories have small positive rewards.
+
+The way that the agent makes the decision to continue or terminate depends on what the agent expects the reward to be at its current node, also known as the *value*. It keeps track of these values in a *v-table* which gets built up over time as the agent explores more and more of its network.
+
+## Parameters
+
+The agent has a few parameters which are featured in this model
+
+- $\alpha$ (alpha): learning rate. Higher $\alpha$ will result in the agent changing its values more quickly in response to new information
+- $\gamma$ (gamma): discount factor. Defines how heavily it weighs future rewards.
+- temperature: A source of "randomness", a willingness to make "unoptimal" decisions. An agent with a lower temperature is more likely to *exploit* and stick with the options it knows are best, while an agent with higher temperature is more willing to *explore* and take more chances in the short-term in order to explore its environment.
+
+These parameters can all be altered, resulting in slightly different behavior for the agent as it learns.
+
+```{python}
+class Agent:
+    def __init__(self, alpha=0.1, gamma=0.9, temp=0.1):
+        self.alpha = alpha
+        self.gamma = gamma
+        self.temp = temp
+        self.vtable = {}
+        self.reason = None
+    
+    def policy(self, network):
+        s1 = network.state
+        if s1 not in self.vtable:
+            self.vtable[s1] = 1
+        v1 = self.vtable[s1]
+        if v1 / self.temp < -50:
+            recall = False
+        else:
+            recall = 1 / (1 + np.e ** (-v1 / self.temp)) > random.random()
+        if recall:
+            s2 = network.spreading_activation()
+            if s2 is False:
+                self.reason = "No activation above threshold"
+                return False
+            network.state = s2
+        else:
+            self.reason = "Value is too low"
+            return False
+        if s2 not in self.vtable:
+            self.vtable[s2] = 1
+        v2 = self.vtable[s2]
+        r = -10 if s2 == 0 else 1 # hardcoding memory 0 as "trauma" memory
+        rpe = r + self.gamma * v2 - v1
+        self.vtable[s1] += self.alpha * rpe
+        return True
+```
+
+## Simulator
+
+To run the agent in the envrionment multiple times, I have created a simulator class that defines methods for a single retrieval, and multiple retrievals.
+
+```{python}
+class Simulator:
+    def __init__(self, agent, network):
+        self.states_visited = []
+        self.record = []
+        self.agent = agent
+        self.network = network
+    
+    def retrieve(self, max_steps, decay, time):
+        recall = True
+        steps = 0
+        self.network.current_graph = self.network.graph.copy()
+        self.network.initialize_state()
+        while recall and steps < max_steps:
+            self.states_visited.append(self.network.state)
+            recall = self.agent.policy(self.network)
+            steps += 1
+        if decay:
+            self.network.decay(time)
+
+    def run(self, n, max_steps, decay=True, time=10):
+        for _ in range(n):
+            self.retrieve(max_steps, decay, time)
+            self.record.append(self.states_visited)
+            self.states_visited = []
+```
+
+## Testing
+
+I am interested in how long the agent chooses to retrieve before terminating, so I initialized an environment and agent, and simulated the agent attempting to retrieve 20 times and displayed the number of nodes encountered. Memory decay is disabled for now.
+
+```{python}
+environment = Memory(100, 20)
+agent = Agent()
+test = Simulator(agent, environment)
+test.run(20, 99, decay=False)
+for trial in test.record:
+    print(len(trial))
+```
+
+# Exploration and Visualization
+
+
+```{python}
+#| echo: false
+import seaborn as sns
+import matplotlib.pyplot as plt
+```
+
+## Visualization
+
+First, visualizing the retrieval lengths of an agent over ten time units, using a new environment and agent for ten repetitions.
+
+```{python}
+ys = []
+for _ in range(10):
+    environment = Memory(100, 20, 99)
+    agent = Agent()
+    test = Simulator(agent, environment)
+    test.run(10, 99, time=0.1)
+    retrieval_length = [len(trial) for trial in test.record]
+    sns.lineplot(x=range(1, 11), y=retrieval_length)
+plt.xlabel("time")
+plt.ylabel("retrieval_length")
+plt.ylim(0, 100)
+plt.show()
+```
+
+## Parameter Exploration
+
+Next, plotting average and final retrieval lengths across different parameters. The defaults I used were $\alpha = 0.1$, $\gamma = 0.9$, and $temp = 0.1$. 
+
+```{python}
+def calculate_data(opt, params, n):
+    avg_retrieval = []
+    final_retrieval = []
+    for p in params:
+        if opt == "alpha":
+            agent = Agent(alpha=p)
+        elif opt == "gamma":
+            agent = Agent(gamma=p)
+        elif opt == "temp":
+            agent = Agent(temp=p)
+        environment = Memory(100, 20, 99)
+        test = Simulator(agent, environment)
+        test.run(n, 99, time=0.1)
+        retrieval_length = [len(trial) for trial in test.record]
+        avg_retrieval.append(np.mean(retrieval_length))
+        final_retrieval.append(retrieval_length[-1])
+    return avg_retrieval, final_retrieval
+    
+fig, axs = plt.subplots(3, 2, sharey=True)
+alphas = [n / 100 for n in range (1, 21)]
+gammas = [n / 100 for n in range(80, 100)]
+temps = [n / 100 for n in range(1, 21)]
+ax_count = 0
+for opt, params in {"alpha": alphas, "gamma": gammas, "temp": temps}.items():
+    avg_retrieval, final_retrieval = calculate_data(opt, params, 20)
+    sns.lineplot(x=params, y=avg_retrieval, ax=axs[ax_count][0])
+    sns.lineplot(x=params, y=final_retrieval, ax=axs[ax_count][1])
+    axs[ax_count][0].set_xlabel(opt)
+    axs[ax_count][1].set_xlabel(opt)
+    ax_count += 1
+fig.suptitle("Average and Final Retrieval Lengths")
+plt.tight_layout()
+plt.show()
+```
+
