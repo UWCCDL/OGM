@@ -15,11 +15,13 @@ import numpy as np
 import math
 ```
 
-# Generating Memory Network
+# Autobiographical Memory
+
+## Generating Memory Network
 
 The first step is to create our memories. 
 
-![image.png](ESK.png)
+![Autobiographical Memory Structure](ESK.png)
 
 According to Conway and Pearce (2000), autobiographical memory can be divided into three main components: 
 
@@ -37,7 +39,7 @@ For this model, we will be focusing on the lowest layer (ESK), as that is what p
 
 In the spreading activation model of memory retrieval, activation of one node causes activation of a connected node which repeats until retrieval is terminated through some process. It makes sense then that nodes which are more closely connected (ESK's of the same general event) would be more likely to activate each other than ESK's that are unrelated.
 
-![Spreading Activation](equation.png)
+![Spreading Activation](Spreading-activation-graph-1.png)
 
 To calculate the probability of a memory being retrieved, we would first have to consider the total activation of every node, defined as the base-level activation + spreading activation + noise. Then, the model would probabilistically choose a node that is above a pre-defined threshold using the activations as the weights.
 
@@ -45,7 +47,7 @@ To calculate the probability of a memory being retrieved, we would first have to
 
 Although the spreading activation is assumed to remain constant in this model, base-level activation does change. This is because memory decays over time to the point at which it is forgotten, while retrieving the memory helps retain it. Every time a memory is recalled, this means that a new "trace" is created.
 
-![](attachment:image-2.png)
+![ACT-R Equation](equation.png)
 
 The equation above shows how base-level activation is calculated, and it is what my model uses. Each trace is maximally active during creation when $t = 1$, and exponentially decays as $t$ gets larger due to the negative d. Then, all of the traces are summed to give the final base-level activation. 
 
@@ -99,7 +101,9 @@ class Memory:
             self.graph[node] = [trace + time for trace in self.graph[node]]
 ```
 
-# Agent
+# Reinforcement Learning
+
+## Agent
 
 In reinforcement learning, an agent learns to explore its environment in order to maximize rewards. This is what that means in terms of my model:
 
@@ -111,7 +115,7 @@ To simplify the model, I will assume that there is one "trauma" memory which has
 
 The way that the agent makes the decision to continue or terminate depends on what the agent expects the reward to be at its current node, also known as the *value*. It keeps track of these values in a *v-table* which gets built up over time as the agent explores more and more of its network.
 
-# Parameters
+## Parameters
 
 The agent has a few parameters which are featured in this model
 
@@ -157,7 +161,9 @@ class Agent:
         return True
 ```
 
-# Simulator
+# Results
+
+## Simulator
 
 To run the agent in the envrionment multiple times, I have created a simulator class that defines methods for a single retrieval, and multiple retrievals.
 
@@ -188,7 +194,7 @@ class Simulator:
             self.states_visited = []
 ```
 
-# Testing
+## Testing
 
 ```{python}
 environment = Memory(100, 20)
@@ -199,7 +205,7 @@ for trial in test.record:
     print(len(trial))
 ```
 
-# Exploration and Visualization
+## Exploration and Visualization
 
 
 ```{python}

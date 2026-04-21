@@ -134,8 +134,12 @@
 
 </section>
 <section>
-<section id="generating-memory-network" class="title-slide slide level1 center">
-<h1>Generating Memory Network</h1>
+<section id="autobiographical-memory" class="title-slide slide level1 center">
+<h1>Autobiographical Memory</h1>
+
+</section>
+<section id="generating-memory-network" class="slide level2">
+<h2>Generating Memory Network</h2>
 <p>The first step is to create our memories.</p>
 
 <img data-src="ESK.png" class="r-stretch quarto-figure-center"><p class="caption">image.png</p><p>According to Conway and Pearce (2000), autobiographical memory can be divided into three main components:</p>
@@ -155,16 +159,21 @@
 <h2>Spreading Activation</h2>
 <p>In the spreading activation model of memory retrieval, activation of one node causes activation of a connected node which repeats until retrieval is terminated through some process. It makes sense then that nodes which are more closely connected (ESK’s of the same general event) would be more likely to activate each other than ESK’s that are unrelated.</p>
 
-<img data-src="equation.png" class="r-stretch quarto-figure-center"><p class="caption">Spreading Activation</p><p>To calculate the probability of a memory being retrieved, we would first have to consider the total activation of every node, defined as the base-level activation + spreading activation + noise. Then, the model would probabilistically choose a node that is above a pre-defined threshold using the activations as the weights.</p>
+<img data-src="Spreading-activation-graph-1.png" class="r-stretch quarto-figure-center"><p class="caption">Spreading Activation</p><p>To calculate the probability of a memory being retrieved, we would first have to consider the total activation of every node, defined as the base-level activation + spreading activation + noise. Then, the model would probabilistically choose a node that is above a pre-defined threshold using the activations as the weights.</p>
 </section>
 <section id="act-r-model-of-memory-decay" class="slide level2">
 <h2>ACT-R Model of Memory Decay</h2>
 <p>Although the spreading activation is assumed to remain constant in this model, base-level activation does change. This is because memory decays over time to the point at which it is forgotten, while retrieving the memory helps retain it. Every time a memory is recalled, this means that a new “trace” is created.</p>
 
-<img data-src="attachment:image-2.png" class="r-stretch"><p>The equation above shows how base-level activation is calculated, and it is what my model uses. Each trace is maximally active during creation when <span class="math inline">\(t = 1\)</span>, and exponentially decays as <span class="math inline">\(t\)</span> gets larger due to the negative d.&nbsp;Then, all of the traces are summed to give the final base-level activation.</p>
+<img data-src="equation.png" class="r-stretch quarto-figure-center"><p class="caption">ACT-R Equation</p><p>The equation above shows how base-level activation is calculated, and it is what my model uses. Each trace is maximally active during creation when <span class="math inline">\(t = 1\)</span>, and exponentially decays as <span class="math inline">\(t\)</span> gets larger due to the negative d.&nbsp;Then, all of the traces are summed to give the final base-level activation.</p>
 </section></section>
-<section id="agent" class="title-slide slide level1 center">
-<h1>Agent</h1>
+<section>
+<section id="reinforcement-learning" class="title-slide slide level1 center">
+<h1>Reinforcement Learning</h1>
+
+</section>
+<section id="agent" class="slide level2">
+<h2>Agent</h2>
 <p>In reinforcement learning, an agent learns to explore its environment in order to maximize rewards. This is what that means in terms of my model:</p>
 <ul>
 <li>Environment: The memory network defined in the previous section.</li>
@@ -174,9 +183,8 @@
 <p>To simplify the model, I will assume that there is one “trauma” memory which has a very negative reward, and all of the other memories have small positive rewards.</p>
 <p>The way that the agent makes the decision to continue or terminate depends on what the agent expects the reward to be at its current node, also known as the <em>value</em>. It keeps track of these values in a <em>v-table</em> which gets built up over time as the agent explores more and more of its network.</p>
 </section>
-
-<section id="parameters" class="title-slide slide level1 center">
-<h1>Parameters</h1>
+<section id="parameters" class="slide level2">
+<h2>Parameters</h2>
 <p>The agent has a few parameters which are featured in this model</p>
 <ul>
 <li><span class="math inline">\(\alpha\)</span> (alpha): learning rate. Higher <span class="math inline">\(\alpha\)</span> will result in the agent changing its values more quickly in response to new information</li>
@@ -184,45 +192,47 @@
 <li>temperature: A source of “randomness”, a willingness to make “unoptimal” decisions. An agent with a lower temperature is more likely to <em>exploit</em> and stick with the options it knows are best, while an agent with higher temperature is more willing to <em>explore</em> and take more chances in the short-term in order to explore its environment.</li>
 </ul>
 <p>These parameters can all be altered, resulting in slightly different behavior for the agent as it learns.</p>
-</section>
+</section></section>
+<section>
+<section id="results" class="title-slide slide level1 center">
+<h1>Results</h1>
 
-<section id="simulator" class="title-slide slide level1 center">
-<h1>Simulator</h1>
+</section>
+<section id="simulator" class="slide level2">
+<h2>Simulator</h2>
 <p>To run the agent in the envrionment multiple times, I have created a simulator class that defines methods for a single retrieval, and multiple retrievals.</p>
 </section>
-
-<section id="testing" class="title-slide slide level1 center">
-<h1>Testing</h1>
-<div id="33686876" class="cell" data-execution_count="5">
+<section id="testing" class="slide level2">
+<h2>Testing</h2>
+<div id="b1737ea5" class="cell" data-execution_count="5">
 <div class="cell-output cell-output-stdout">
 <pre><code>99
-45
+99
+27
 99
 99
+99
+99
+99
+99
+99
+19
+4
+72
 42
 99
 99
-62
-10
-11
-97
-63
-28
-94
-25
-81
-26
-52
-49
-64</code></pre>
+99
+99
+99
+99</code></pre>
 </div>
 </div>
 </section>
-
-<section id="exploration-and-visualization" class="title-slide slide level1 center">
-<h1>Exploration and Visualization</h1>
+<section id="exploration-and-visualization" class="slide level2">
+<h2>Exploration and Visualization</h2>
 <p>First, visualizing the retrieval lengths of an agent over ten time units.</p>
-<div id="aa6d55d9" class="cell" data-execution_count="7">
+<div id="c10208b9" class="cell" data-execution_count="7">
 <div class="cell-output cell-output-display">
 <div>
 <figure>
@@ -232,7 +242,7 @@
 </div>
 </div>
 <p>Next, Plotting average and final retrieval lengths across different parameters</p>
-<div id="29dfa3e6" class="cell" data-execution_count="8">
+<div id="330c0620" class="cell" data-execution_count="8">
 <div class="cell-output cell-output-display">
 <div>
 <figure>
@@ -242,7 +252,7 @@
 </div>
 </div>
 
-</section>
+</section></section>
     </div>
   <div class="quarto-auto-generated-content" style="display: none;">
 <div class="footer footer-default">
