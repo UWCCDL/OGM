@@ -246,7 +246,7 @@
 </figure>
 </div>
 <p>The equation above shows how base-level activation is calculated, and it is what my model uses. Each trace is maximally active during creation when <span class="math inline">\(t = 1\)</span>, and exponentially decays as <span class="math inline">\(t\)</span> gets larger due to the negative d.&nbsp;Then, all of the traces are summed to give the final base-level activation.</p>
-<div id="5e1c996d" class="cell" data-execution_count="2">
+<div id="a8f4a748" class="cell" data-execution_count="2">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href=""></a><span class="kw">class</span> Memory:</span>
 <span id="cb1-2"><a href=""></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, n, groups, state<span class="op">=</span><span class="va">None</span>, thres<span class="op">=</span><span class="dv">0</span>, sigma<span class="op">=</span><span class="fl">0.1</span>):</span>
 <span id="cb1-3"><a href=""></a>        group_size <span class="op">=</span> n <span class="op">//</span> groups</span>
@@ -321,7 +321,7 @@
 <li>temperature: A source of “randomness”, a willingness to make “unoptimal” decisions. An agent with a lower temperature is more likely to <em>exploit</em> and stick with the options it knows are best, while an agent with higher temperature is more willing to <em>explore</em> and take more chances in the short-term in order to explore its environment.</li>
 </ul>
 <p>These parameters can all be altered, resulting in slightly different behavior for the agent as it learns.</p>
-<div id="20074312" class="cell" data-execution_count="3">
+<div id="71b3271b" class="cell" data-execution_count="3">
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href=""></a><span class="kw">class</span> Agent:</span>
 <span id="cb2-2"><a href=""></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, alpha<span class="op">=</span><span class="fl">0.1</span>, gamma<span class="op">=</span><span class="fl">0.9</span>, temp<span class="op">=</span><span class="fl">0.1</span>):</span>
 <span id="cb2-3"><a href=""></a>        <span class="va">self</span>.alpha <span class="op">=</span> alpha</span>
@@ -365,7 +365,7 @@
 <section id="simulator" class="slide level2">
 <h2>Simulator</h2>
 <p>To run the agent in the envrionment multiple times, I have created a simulator class that defines methods for a single retrieval, and multiple retrievals.</p>
-<div id="8b15700b" class="cell" data-execution_count="4">
+<div id="9640dca0" class="cell" data-execution_count="4">
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href=""></a><span class="kw">class</span> Simulator:</span>
 <span id="cb3-2"><a href=""></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, agent, network):</span>
 <span id="cb3-3"><a href=""></a>        <span class="va">self</span>.states_visited <span class="op">=</span> []</span>
@@ -394,7 +394,7 @@
 </section>
 <section id="testing" class="slide level2">
 <h2>Testing</h2>
-<div id="528c2750" class="cell" data-execution_count="5">
+<div id="29b8741c" class="cell" data-execution_count="5">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href=""></a>environment <span class="op">=</span> Memory(<span class="dv">100</span>, <span class="dv">20</span>)</span>
 <span id="cb4-2"><a href=""></a>agent <span class="op">=</span> Agent()</span>
 <span id="cb4-3"><a href=""></a>test <span class="op">=</span> Simulator(agent, environment)</span>
@@ -403,32 +403,32 @@
 <span id="cb4-6"><a href=""></a>    <span class="bu">print</span>(<span class="bu">len</span>(trial))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>99
-79
 99
-99
-23
-99
-39
-3
-69
-67
-75
-2
-56
-9
+32
+86
+4
+45
+30
+87
+16
+26
+45
 51
-41
-65
+66
+9
+32
+21
+7
 57
-23
-24</code></pre>
+51
+41</code></pre>
 </div>
 </div>
 </section>
 <section id="exploration-and-visualization" class="slide level2">
 <h2>Exploration and Visualization</h2>
 <p>First, visualizing the retrieval lengths of an agent over ten time units.</p>
-<div id="1f0b1a16" class="cell" data-execution_count="7">
+<div id="b6b8531a" class="cell" data-execution_count="7">
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href=""></a>ys <span class="op">=</span> []</span>
 <span id="cb6-2"><a href=""></a><span class="cf">for</span> _ <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">10</span>):</span>
 <span id="cb6-3"><a href=""></a>    environment <span class="op">=</span> Memory(<span class="dv">100</span>, <span class="dv">20</span>, <span class="dv">99</span>)</span>
@@ -450,7 +450,7 @@
 </div>
 </div>
 <p>Next, Plotting average and final retrieval lengths across different parameters</p>
-<div id="d8e2af3e" class="cell" data-execution_count="8">
+<div id="f8470b2c" class="cell" data-execution_count="8">
 <div class="sourceCode cell-code" id="cb7"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href=""></a><span class="kw">def</span> calculate_data(opt, params, n):</span>
 <span id="cb7-2"><a href=""></a>    avg_retrieval <span class="op">=</span> []</span>
 <span id="cb7-3"><a href=""></a>    final_retrieval <span class="op">=</span> []</span>
