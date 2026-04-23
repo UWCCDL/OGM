@@ -1,6 +1,10 @@
 project:
   title: "ogm_model"
   output-dir: "docs"
+  resources:
+    - "equation.png"
+    - "Spreading-activation-graph-1.png"
+    - "ESK.png"
 
 
 
