@@ -5,11 +5,12 @@ import math
 
 
 class Memory:
-    def __init__(self, n, groups, rewards, state=None, thres=0, sigma=0.1):
+    def __init__(self, n, groups, rewards, state=None, thres=0, sigma=0.1,
+                 mean_s=-2, var=1):
         group_size = n // groups
 
         def weight(i, j):
-            return 10 + random.gauss(0, 1) if (i // group_size == j // group_size) else random.gauss(-2, 1) # <2>
+            return 10 + random.gauss(0, var) if (i // group_size == j // group_size) else random.gauss(mean_s, var)
         graph = rx.PyGraph()
         graph.add_nodes_from([[1]] * n)
         graph.add_edges_from([

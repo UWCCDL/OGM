@@ -76,8 +76,7 @@ class Memory:
         group_size = n // groups # <2>
 
         def weight(i, j): # <2>
-            return 10 if (i // group_size == j // group_size) else 0 # <2>
-
+            return 10 + random.gauss(0, 1) if (i // group_size == j // group_size) else random.gauss(-2, 1) # <2>
         graph = rx.PyGraph()
         graph.add_nodes_from([[1]] * n) # <1>
         graph.add_edges_from([ # <2>
@@ -85,6 +84,11 @@ class Memory:
             for i in range(n) # <2>
             for j in range(i + 1, n) # <2>
         ])
+        negative_edges = [
+            (source, target) 
+            for source, target, weight in graph.weighted_edge_list() if weight < 0
+        ]
+        graph.remove_edges_from(negative_edges)
         self.graph = graph
         self.state = state
         self.thres = thres

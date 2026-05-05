@@ -5,11 +5,12 @@ import math
 
 
 class Memory:
-    def __init__(self, n, groups, rewards, state=None, thres=0, sigma=0.1):
+    def __init__(self, n, groups, rewards, state=None, thres=0, sigma=0.1,
+                 mean_s=-2, var=1, trauma_active=False):
         group_size = n // groups
 
         def weight(i, j):
-            return 10 + random.gauss(0, 1) if (i // group_size == j // group_size) else random.gauss(-2, 1) # <2>
+            return 10 + random.gauss(0, var) if (i // group_size == j // group_size) else random.gauss(mean_s, var)
         graph = rx.PyGraph()
         graph.add_nodes_from([[1]] * n)
         graph.add_edges_from([
@@ -22,6 +23,15 @@ class Memory:
             for source, target, weight in graph.weighted_edge_list() if weight < 0
         ]
         graph.remove_edges_from(negative_edges)
+        if trauma_active:
+            for node in rewards:
+                if rewards[node] < -1:
+                    for other in range(n):
+                        if other != node:
+                            if graph.has_edge(node, other):
+                                graph.update_edge(node, other, trauma_active)
+                            else:
+                                graph.add_edge(node, other, trauma_active)
         self.graph = graph
         self.state = state
         self.thres = thres
@@ -100,17 +110,35 @@ class Simulator:
     def retrieve(self, max_steps, decay, time):
         recall = True
         steps = 0
+        trauma_encountered = False
         self.network.initialize_state()
         self.network.current_graph = self.network.graph.copy()
+
+        # Identify trauma nodes using the same criterion as Memory.__init__
+        trauma_nodes = {node for node in self.network.rewards if self.network.rewards[node] < -1}
+
         while recall and steps < max_steps:
             self.states_visited.append(self.network.state)
+            if self.network.state in trauma_nodes:
+                trauma_encountered = True
             recall = self.agent.policy(self.network)
             steps += 1
+
         if decay:
             self.network.decay(time)
 
-    def run(self, n, max_steps, decay=True, time=10):
+        return trauma_encountered
+
+    def run(self, n, max_steps, decay=True, time=10, print_message=False):
+        trauma_count = 0
         for _ in range(n):
-            self.retrieve(max_steps, decay, time)
+            encountered = self.retrieve(max_steps, decay, time)
+            if encountered:
+                trauma_count += 1
             self.record.append(self.states_visited)
             self.states_visited = []
+
+        trauma_rate = trauma_count / n
+        if print_message:
+            print(f"Trauma encountered in {trauma_count}/{n} retrievals ({trauma_rate:.1%})")
+            return trauma_rate
