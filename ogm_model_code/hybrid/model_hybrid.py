@@ -369,6 +369,105 @@ class QAgent:
         return True
 
 
+class HybridAgent:
+    """TD(0) agent that blends per-node (QAgent) and global (Agent) value signals.
+
+    The RPE linearly interpolates between the two pure agent modes:
+
+        rpe = r + (1 - bias) * (γ·V(s2) − V(s1)) + bias · global_value
+
+    so that:
+      - bias = 0   → pure QAgent: rpe = r + γ·V(s2) − V(s1)
+      - bias = 1   → pure Agent:  rpe = r + global_value
+      - 0 < bias < 1 → proportional blend of both approaches
+
+    The policy gate mirrors this: gate = (1 - bias) · V(s1) + bias · global_value.
+
+    Parameters
+    ----------
+    network : Memory
+        The memory network the agent operates on.
+    alpha : float
+        Learning rate applied to both vtable entries and the global value.
+    gamma : float
+        Discount factor.
+    temp : float
+        Softmax temperature for the recall decision.
+    v_i : float
+        Initial value assigned to unseen nodes in the vtable.
+    value : float
+        Initial global value (analogous to Agent.value).
+    bias : float
+        Proportion of Agent-style (global) decision-making in [0, 1].
+        0 = pure QAgent, 1 = pure Agent.
+    """
+
+    def __init__(self, network, alpha=0.1, gamma=0.9, temp=0.1,
+                 v_i=1, value=10, bias=0.5):
+        self.network = network
+        self.alpha = alpha
+        self.gamma = gamma
+        self.temp = temp
+        self.v_i = v_i
+        self.value = value          # global value signal (from Agent)
+        self.bias = bias            # mixing weight between the two value sources
+        self.vtable = {}
+        # Bookkeeping for deferred TD update
+        self._prev_state = None
+        self._prev_reward = None
+
+    # ------------------------------------------------------------------
+    # helpers
+    # ------------------------------------------------------------------
+
+    def _v(self, node):
+        """Return (and lazily initialise) the per-node value for *node*."""
+        if node not in self.vtable:
+            self.vtable[node] = self.v_i
+        return self.vtable[node]
+
+    def reset(self):
+        """Flush any pending TD update at the end of an episode."""
+        if self._prev_state is not None:
+            v_s1 = self._v(self._prev_state)
+            rpe = self._prev_reward - (1 - self.bias) * v_s1 + self.bias * self.value
+            self.vtable[self._prev_state] += self.alpha * rpe
+            global_rpe = self._prev_reward + (self.gamma - 1) * self.value
+            self.value += self.alpha * self.bias * global_rpe
+        self._prev_state = None
+        self._prev_reward = None
+
+    def policy(self, r):
+        s1 = self.network.state
+
+        if self._prev_state is not None:
+            s2 = s1
+            v_s1 = self._v(self._prev_state)
+            v_s2 = self._v(s2)
+            rpe = self._prev_reward + (1 - self.bias) * (self.gamma * v_s2 - v_s1) + self.bias * self.value
+            self.vtable[self._prev_state] += self.alpha * rpe
+            global_rpe = self._prev_reward + (self.gamma - 1) * self.value
+            self.value += self.alpha * global_rpe
+
+        v1 = self._v(s1)
+        gate = (1 - self.bias) * v1 + self.bias * self.value
+
+        if gate / self.temp < -50:
+            self._prev_state = None
+            self._prev_reward = None
+            return False
+
+        recall = 1 / (1 + np.e ** (-gate / self.temp)) > random.random()
+        if not recall:
+            self._prev_state = None
+            self._prev_reward = None
+            return False
+
+        self._prev_state = s1
+        self._prev_reward = r
+        return True
+
+
 class Simulator:
     def __init__(self, agent, network):
         self.states_visited = []
@@ -376,7 +475,10 @@ class Simulator:
         self.agent = agent
         self.network = network
     
-    def retrieve(self, max_steps):
+    def retrieve(self, max_steps, frame_index=0, output_dir=None):
+        import os
+        import matplotlib.pyplot as plt
+
         recall = True
         steps = 0
         trauma_encountered = False
@@ -393,6 +495,7 @@ class Simulator:
             r = self.network.rewards[self.network.state]
             recall = self.agent.policy(r)
             s = self.network.spreading_activation()
+
             if s is False:
                 break
             self.network.state = s
@@ -402,23 +505,51 @@ class Simulator:
         if hasattr(self.agent, "reset"):
             self.agent.reset()
 
-        return trauma_encountered
+        if output_dir is not None:
+            fig, ax = plt.subplots(figsize=(8, 6))
+            self.network.visualize(
+                title=f"Retrieval {len(self.record) + 1}",
+                ax=ax,
+                min_strength=1
+            )
+            fig.tight_layout()
+            fig.savefig(os.path.join(output_dir, f"frame_{frame_index:04d}.png"),
+                        dpi=100, bbox_inches="tight")
+            plt.close(fig)
+            frame_index += 1
 
-    def run(self, n, max_steps, decay=True, time=10, print_message=False, delta=None, a=1):
+        return trauma_encountered, frame_index
+
+    def run(self, n, max_steps, decay=True, time=10, print_message=False, delta=None, a=1,
+            visualize=False, output_dir="retrieval_frames"):
+        import os
+
+        if visualize:
+            os.makedirs(output_dir, exist_ok=True)
+
         trauma_count = 0
-        for _ in range(n):
-            encountered = self.retrieve(max_steps)
+        frame_index = 0
+
+        for retrieval_num in range(n):
+            encountered, frame_index = self.retrieve(
+                max_steps,
+                frame_index=frame_index,
+                output_dir=output_dir if visualize else None,
+            )
+
             if decay:
                 self.network.decay(time)
             if delta is not None:
                 self.network.add_memories(delta, a=a)
-                
+
             if encountered:
                 trauma_count += 1
             self.record.append(self.states_visited)
             self.states_visited = []
 
         trauma_rate = trauma_count / n
+        if visualize:
+            print(f"Saved {frame_index} frame(s) to '{output_dir}/'")
         if print_message:
             print(f"Trauma encountered in {trauma_count}/{n} retrievals ({trauma_rate:.1%})")
             return trauma_rate
