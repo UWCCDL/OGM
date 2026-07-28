@@ -23,7 +23,15 @@ class Memory:
             for source, target, weight in graph.weighted_edge_list() if weight < 0
         ]
         graph.remove_edges_from(negative_edges)
-        self.trauma = trauma
+        # Normalise trauma[0] to a set so multiple nodes can be tracked.
+        raw_nodes = trauma[0]
+        if raw_nodes is None:
+            trauma_nodes = set()
+        elif isinstance(raw_nodes, int):
+            trauma_nodes = {raw_nodes}
+        else:
+            trauma_nodes = set(raw_nodes)
+        self.trauma = (trauma_nodes, trauma[1])
         self.graph = graph
         self.state = state
         self.thres = thres
@@ -39,7 +47,7 @@ class Memory:
             for g in range(groups)
         }
 
-    def add_memories(self, n, a=1):
+    def add_memories(self, n, a=1, trauma=False):
         """Add n new memories to the graph as a single cohesive batch.
 
         The new nodes mirror the structure from __init__:
@@ -48,10 +56,24 @@ class Memory:
           - Intra-batch edges: strong positive weight (10 + gauss(0, var)).
           - Cross edges to existing nodes: sparse weight (gauss(mean_s, var));
             negative weights are discarded, matching __init__ behaviour.
+
+        Parameters
+        ----------
+        n : int
+            Number of new memory nodes to add.
+        a : float
+            Initial activation payload for every new node. Defaults to 1.
+        trauma : float or False
+            When not False, the first node in the new batch is designated as a
+            trauma memory.  The value is used as that node's reward (e.g.
+            pass ``trauma=-10`` for a strongly aversive memory).  The node is
+            added to the ``self.trauma[0]`` set so that ``spreading_activation``
+            automatically applies the existing boost (``self.trauma[1]``) to it
+            alongside all previously registered trauma nodes.
         """
         existing_indices = self.graph.node_indices()
 
-        # Add n new nodes and capture their stable rustworkx indices.
+        # All nodes receive the standard activation payload.
         new_indices = self.graph.add_nodes_from([[a]] * n)
 
         # Intra-batch edges (strong, like same-group edges in __init__).
@@ -74,8 +96,15 @@ class Memory:
             [(u, v, w) for u, v, w in cross_edges if w >= 0]
         )
 
-        # Update rewards: all new memories get a reward of 1.
+        # Update rewards: all new memories get a reward of 1 by default.
         self.rewards.update({idx: 1 for idx in new_indices})
+
+        # If a trauma memory was requested, override the first node's reward
+        # and add it to the trauma node set.
+        if trauma is not False:
+            trauma_node_idx = new_indices[0]
+            self.rewards[trauma_node_idx] = trauma
+            self.trauma[0].add(trauma_node_idx)
 
         # Register the new batch as its own group (next available group key).
         new_group = max(self.node_groups) + 1
@@ -129,12 +158,12 @@ class Memory:
         )  # {node_idx: (x, y)}
 
         # --- derived per-node quantities ---------------------------------------
-        trauma_node = self.trauma[0]
-        trauma_present = trauma_node is not None and trauma_node in pos and trauma_node in nodes
+        trauma_nodes = self.trauma[0]
+        trauma_present = any(n in pos and n in nodes for n in trauma_nodes)
 
         node_xy    = np.array([pos[n] for n in nodes])
         node_sizes = np.array([max(sum_t(n), 1e-9) * 120 for n in nodes])
-        node_colors = ["crimson" if n == trauma_node else "steelblue" for n in nodes]
+        node_colors = ["crimson" if n in trauma_nodes else "steelblue" for n in nodes]
 
         # --- derived per-edge quantities (only edges between visible nodes) ----
         visible = set(nodes)
@@ -234,7 +263,7 @@ class Memory:
             sum_t = sum(trace ** -0.5 for trace in graph[j])
 
             activation = adj[j] + math.log(sum_t) + random.gauss(0, self.sigma)
-            if j == self.trauma[0]:
+            if j in self.trauma[0]:
                 activation += self.trauma[1]
             if activation > self.thres:
                 activations.append(activation)
@@ -520,8 +549,9 @@ class Simulator:
 
         return trauma_encountered, frame_index
 
-    def run(self, n, max_steps, decay=True, time=10, print_message=False, delta=None, a=1,
-            visualize=False, output_dir="retrieval_frames"):
+    def run(self, n, max_steps, decay=True, time=10, print_message=False,
+            delta=None, a=1, trauma=False,visualize=False,
+            output_dir="retrieval_frames"):
         import os
 
         if visualize:
@@ -540,7 +570,10 @@ class Simulator:
             if decay:
                 self.network.decay(time)
             if delta is not None:
-                self.network.add_memories(delta, a=a)
+                if (retrieval_num + 1) % 10 == 0:
+                    self.network.add_memories(delta, a=a, trauma=trauma)
+                else:
+                    self.network.add_memories(delta, a=a)
 
             if encountered:
                 trauma_count += 1
