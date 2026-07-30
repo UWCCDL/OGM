@@ -413,6 +413,7 @@ class Simulator:
         self.states_visited = []
         self.record = []
         self.reward_totals = []
+        self.trauma_encounters = []
         self.agent = agent
         self.network = network
 
@@ -495,6 +496,7 @@ class Simulator:
                 trauma_count += 1
             self.record.append(self.states_visited)
             self.reward_totals.append(total_reward)
+            self.trauma_encounters.append(encountered)
             self.states_visited = []
 
         trauma_rate = trauma_count / n
