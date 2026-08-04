@@ -465,7 +465,7 @@ class Simulator:
         return trauma_encountered, frame_index, total_reward
 
     def run(self, n, max_steps, decay=True, time=10, print_message=False,
-            delta=None, add_freq=1, a=1, trauma=False, visualize=False,
+            delta=None, add_freq=1, a=1, trauma=False, trauma_freq=1, visualize=False,
             output_dir="retrieval_frames"):
         import os
 
@@ -487,10 +487,14 @@ class Simulator:
                 if hasattr(self.agent, "decay"):
                     self.agent.decay()
             if delta is not None:
-                # if (retrieval_num + 1) % add_freq == 0:
-                #     self.network.add_memories(delta, a=a, trauma=trauma)
                 for _ in range(add_freq):
                     self.network.add_memories(delta, a=a)
+                # In addition to the regular delta batch, periodically add a single
+                # new trauma memory (reward=`trauma`) so the network keeps accruing
+                # aversive content over time rather than having just the one fixed
+                # trauma node from __init__.
+                if trauma is not False and (retrieval_num + 1) % trauma_freq == 0:
+                    self.network.add_memories(1, a=a, trauma=trauma)
 
             if encountered:
                 trauma_count += 1
