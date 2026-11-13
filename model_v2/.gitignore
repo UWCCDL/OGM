@@ -1,0 +1,5 @@
+__pycache__/
+.ipynb_checkpoints/
+# smoke-test output and per-run cache (trials.csv + params.json are the results)
+data_quick/
+data/runs/

@@ -1,0 +1,78 @@
+{
+  "n_memories": 100,
+  "num_groups": 5,
+  "group_features": 3,
+  "max_assoc_strength": 5.0,
+  "trauma_boost": 1,
+  "summary_report": 0.5,
+  "event_report": 0.5,
+  "trace_time": 0.1,
+  "delta": 20,
+  "max_steps": 50,
+  "alpha_psi": 0.1,
+  "alpha_w": 0.1,
+  "gamma": 0.99,
+  "temp": 0.1,
+  "warmup": 150,
+  "measured": 600,
+  "trauma_valence": -50,
+  "p_trauma_cue": 0.25,
+  "decay_rates": [
+    0,
+    0.01,
+    0.02
+  ],
+  "alpha_bias_values": [
+    0,
+    0.0025,
+    0.005,
+    0.01,
+    0.02,
+    0.03,
+    0.1
+  ],
+  "sens_decay": 0.01,
+  "n_seeds": 10,
+  "severity_agents": [
+    [
+      "SV",
+      null
+    ],
+    [
+      "SF",
+      0
+    ],
+    [
+      "SF",
+      0.01
+    ]
+  ],
+  "severity_valences": [
+    -5,
+    -10,
+    -20,
+    -50
+  ],
+  "severity_summary_reports": [
+    0.5,
+    1,
+    2,
+    4
+  ],
+  "severity_seeds": 5,
+  "content_shares": [
+    1,
+    0.75,
+    0.5,
+    0.3,
+    0.2,
+    0.1,
+    0.05,
+    0
+  ],
+  "spectrum_valence": -10,
+  "spectrum_summary_report": 1,
+  "spectrum_measured": 1500,
+  "spectrum_seeds": 10,
+  "config_hash": "296ac90706"
+}
